@@ -1,46 +1,86 @@
-<% if(recipe !=null ) { %>
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Manage Recipes</h2>
 
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page"><%- recipe.name %></li>
-        </ol>
-    </nav>
+    <ul class="nav nav-tabs" id="recipeTabs" role="tablist">
+        <!-- Tab 1: List Recipes -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="list-recipes-tab" data-bs-toggle="tab" data-bs-target="#list-recipes"
+                type="button" role="tab">
+                List Recipes
+            </button>
+        </li>
+        <!-- Tab 2: Create Recipe -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="create-recipe-tab" data-bs-toggle="tab" data-bs-target="#create-recipe"
+                type="button" role="tab">
+                Create Recipe
+            </button>
+        </li>
+    </ul>
 
-
-    <div class="row">
-
-        <div class="col-12 col-md-4">
-            <img src="/<%- recipe.image %>" class="img-fluid sticky-top" style="top: 20px;"
-                alt="<%- recipe.name %>" loading="lazy">
+    <div class="tab-content mt-3" id="recipeTabsContent">
+        <!-- Tab 1 Content: List Recipes -->
+        <div class="tab-pane fade show active" id="list-recipes" role="tabpanel">
+            <% if (recipes.length> 0) { %>
+                <ul class="list-group">
+                    <% recipes.forEach((recipe)=> { %>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>
+                                    <%= recipe.name %>
+                                </strong>
+                                <p class="mb-0">
+                                    <%= recipe.description %>
+                                </p>
+                            </div>
+                            <div>
+                                <a href="/recipe/edit/<%= recipe._id %>" class="btn btn-sm btn-warning">Edit</a>
+                                <form action="/recipe/delete/<%= recipe._id %>" method="POST" class="d-inline">
+                                    <button class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </li>
+                    <% }); %>
+                </ul>
+            <% } else { %>
+                <p class="text-center">No recipes found.</p>
+            <% } %>
         </div>
 
-        <div class="col-12 col-md-8">
-            <div class="row">
-                <div class="col-12">
-                    <h1><%- recipe.name %></h1>
+        <!-- Tab 2 Content: Create Recipe -->
+        <div class="tab-pane fade" id="create-recipe" role="tabpanel">
+            <form action="/recipe/create" method="POST" enctype="multipart/form-data" class="col-md-6 mx-auto shadow p-4">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Recipe Name</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
                 </div>
-                <div class="col-12 mb-4"><i class="bi bi-tag"></i> <%- recipe.category %></div>
-                <div class="col-12" style="white-space: pre-line;">
-                    <h4>Cooking Instructions</h4>
-                    <%- recipe.description %>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
                 </div>
-            </div>
-
-            <div class="row pt-4">
-                <div class="col-12">
-                    <h4>Ingredients</h4>
-                    <ul class="list-group list-group-flush">
-                        <% recipe.ingredients.forEach(function(ingredients, index){ %>
-                            <li class="list-group-item">
-                                <%= ingredients %>
-                            </li>
-                            <% }) %>
-                    </ul>
+                <div class="mb-3">
+                    <label for="ingredients" class="form-label">Ingredients (comma-separated)</label>
+                    <input type="text" class="form-control" id="ingredients" name="ingredients" required>
                 </div>
-            </div>
+                <div class="mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-control" id="category" name="category" required>
+                        <option value="Asian">Asian</option>
+                        <option value="Vegan">Vegan</option>
+                        <option value="Thai">Thai</option>
+                        <option value="American">American</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="Mexican">Mexican</option>
+                        <option value="Indian">Indian</option>
+                        <option value="Seafood">Seafood</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="image" class="form-label">Image</label>
+                    <input type="file" class="form-control" id="image" name="file" accept="image/*" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Create Recipe</button>
+            </form>
         </div>
     </div>
-    <% } else { %>
-        <p>No item found.</p>
-        <% } %>
+</div>

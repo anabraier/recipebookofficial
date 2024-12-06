@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="stylesheet" href="/css/styles.css"> <!-- Link to your CSS -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            background: #797472;
+            color: rgb(18, 17, 17);
+            padding: 20px 0;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        .about-section {
+            margin: 20px 0;
+        }
+
+        .about-section img {
+            max-width: 100%;
+            border-radius: 30px;
+        }
+
+        .about-section h2 {
+            color: #ff7b54;
+        }
+
+        .about-section p {
+            margin-bottom: 10px;
+        }
+
+        .features {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .feature {
+            flex: 1 1 calc(33.333% - 20px);
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .feature img {
+            max-width: 80px;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 10px 0;
+            margin-top: 20px;
+            background: #333;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Welcome to <%= title %>!</h1>
+        <p>Your ultimate recipe book for culinary inspiration!</p>
+    </header>
+
+    <div class="container">
+        <!-- About Section -->
+        <div class="about-section">
+            <h2>About Us</h2>
+            <p>
+                <strong>
+                    <%= title %>
+                </strong> is your go-to platform for discovering, sharing, and organizing the most delicious recipes
+                from around the world. Whether you're a home cook or a seasoned chef, our recipe book offers something
+                for everyone.
+            </p>
+            <p>
+                Explore new cuisines, save your favorite recipes, and unleash your inner chef with our easy-to-use
+                platform. Our goal is to bring people together through the love of cooking and food.
+            </p>
+            <img src="/img/about-banner.png" alt="Cooking Image">
+        </div>
+
+        <!-- Features Section -->
+        <div class="about-section">
+            <h2>Features of <%= title %>
+            </h2>
+            <div class="features">
+                <div class="feature">
+                    <img src="/img/feature1.png" alt="Feature 1">
+                    <h3>Discover Recipes</h3>
+                    <p>Browse through hundreds of recipes from various cuisines and find your next favorite dish.</p>
+                </div>
+                <div class="feature">
+                    <img src="/img/feature2.png" alt="Feature 2">
+                    <h3>Save Your Favorites</h3>
+                    <p>Create your personal recipe collection and keep all your favorites in one place.</p>
+                </div>
+                <div class="feature">
+                    <img src="/img/feature3.png" alt="Feature 3">
+                    <h3>Share with Friends</h3>
+                    <p>Share your culinary creations and recipes with family and friends easily.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Our Mission -->
+        <div class="about-section">
+            <h2>Our Mission</h2>
+            <p>
+                At <%= title %>, we believe that cooking is more than just preparing food—it's an art, a science, and a
+                    way to connect with others. Our mission is to inspire people to cook, explore new flavors, and bring
+                    joy to their kitchens.
+            </p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 <%= title %>. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

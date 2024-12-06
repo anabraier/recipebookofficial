@@ -1,0 +1,80 @@
+<div class="container mt-5">
+    <h2 class="text-center mb-4">All Recipes</h2>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs" id="categoryTabs" role="tablist">
+        <% categories.forEach((category, index)=> { %>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link <%= index === 0 ? 'active' : '' %>" id="<%= category %>-tab"
+                    data-bs-toggle="tab" data-bs-target="#<%= category.replace(/\s+/g, '-') %>" type="button"
+                    role="tab">
+                    <%= category %>
+                </button>
+            </li>
+            <% }); %>
+    </ul>
+
+    <!-- Tabs Content -->
+    <div class="tab-content mt-3" id="categoryTabsContent">
+        <% categories.forEach((category, index)=> { %>
+            <div class="tab-pane fade <%= index === 0 ? 'show active' : '' %>" id="<%= category.replace(/\s+/g, '-') %>"
+                role="tabpanel">
+                <div class="row">
+                    <% if (recipesByCategory[category].length> 0) { %>
+                        <% recipesByCategory[category].forEach(recipe=> { %>
+                            <div class="col-md-4 mb-4">
+                                <div class="card shadow-sm">
+                                    <img src="<%= recipe.image %>" class="card-img-top" alt="<%= recipe.name %>">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <%= recipe.name %>
+                                        </h5>
+                                        <p class="card-text">
+                                            <%= recipe.description %>
+                                        </p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <% if (user) { %>
+                                                <form action="/recipes/like/<%= recipe._id %>?tab=<%= category %>" method="POST" class="d-inline">
+                                                    <button class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi <%= recipe.likes.includes(user.id) ? 'bi-heart-fill text-danger' : 'bi-heart' %>"></i>
+                                                    </button>
+                                                </form>
+                                                <% } %>
+                                                    <small class="text-muted">
+                                                        <%= recipe.likes.length %> Likes
+                                                    </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }); %>
+                                <% } else { %>
+                                    <p class="text-center">No recipes found in this category.</p>
+                                    <% } %>
+                </div>
+            </div>
+            <% }); %>
+    </div>
+</div>
+
+<script>
+    // Get the active tab from the query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab');
+
+    // Activate the corresponding tab if a tab is specified
+    if (activeTab) {
+        const tabElement = document.querySelector(`#${activeTab.replace(/\s+/g, '-')}-tab`);
+        const tabContentElement = document.querySelector(`#${activeTab.replace(/\s+/g, '-')}`);
+
+        if (tabElement && tabContentElement) {
+            // Deactivate all tabs and tab panes
+            document.querySelectorAll('.nav-link').forEach((tab) => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('show', 'active'));
+
+            // Activate the selected tab and tab pane
+            tabElement.classList.add('active');
+            tabContentElement.classList.add('show', 'active');
+        }
+    }
+</script>

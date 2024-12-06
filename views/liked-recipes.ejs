@@ -1,0 +1,42 @@
+<div class="container mt-5">
+    <h2 class="text-center mb-4">My Favorite Recipes</h2>
+
+    <% if (recipes.length> 0) { %>
+        <div class="row">
+            <% recipes.forEach(recipe=> { %>
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <img src="<%= recipe.image %>" class="card-img-top" alt="<%= recipe.name %>">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <%= recipe.name %>
+                            </h5>
+                            <p class="card-text">
+                                <strong>Category:</strong>
+                                <%= recipe.category %><br>
+                                    <strong>Ingredients:</strong>
+                                    <%= recipe.ingredients.join(', ') %><br>
+                <strong>Description:</strong> <%= recipe.description %>
+              </p>
+              <div class="d-flex justify-content-between align-items-center">
+                <% if (user) { %>
+                  <form action="/recipes/like/<%= recipe._id %>" method="POST" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger">
+                      <i class="bi <%= recipe.likes.includes(user.id) ? ' bi-heart-fill text-danger' : 'bi-heart' %>
+                                        "></i>
+                                        </button>
+                                        </form>
+                                        <% } %>
+                                            <small class="text-muted">
+                                                <%= recipe.likes.length %> Likes
+                                            </small>
+                        </div>
+                    </div>
+                </div>
+        </div>
+        <% }); %>
+</div>
+<% } else { %>
+    <p class="text-center">You haven't liked any recipes yet.</p>
+    <% } %>
+        </div>

@@ -1,477 +1,215 @@
-require('../models/database');
-const Category = require('../models/Category');
 const Recipe = require('../models/Recipe');
+const path = require('path');
+const fs = require('fs');
 
-
-exports.homepage = async(req, res) => {
+const viewListRecipePage = async (req, res) => {
   try {
-    const limitNumber = 5;
-    const categories = await Category.find({}).limit(limitNumber);
-    const latest = await Recipe.find({}).sort({_id: -1}).limit(limitNumber);
-    const thai = await Recipe.find({ 'category': 'Thai' }).limit(limitNumber);
-    const american = await Recipe.find({ 'category': 'American' }).limit(limitNumber);
-    const chinese = await Recipe.find({ 'category': 'Chinese' }).limit(limitNumber);
-
-    const food = { latest, thai, american, chinese };
-
-    res.render('index', { title: 'Recipe Book - Welcome Home', categories, food } );
-  } catch (error) {
-    res.satus(500).send({message: error.message || "Error Occured" });
-  }
-}
-
-exports.exploreRecipe = async (req, res) => {
-  try {
-    const recipeId = req.params.id;
-    const recipe = await Recipe.findById(recipeId);
-
-    if (!recipe) {
-      return res.status(404).render('not-found', { message: 'Recipe not found' });
+    if (!res.locals.user) {
+      req.flash('error', 'You must be logged in to view your recipes.');
+      return res.redirect('/login');
     }
 
-    res.render('recipe', {
-      title: recipe.name,
-      recipe,
-    });
+    // Fetch recipes based on the logged-in user's email
+    const recipes = await Recipe.find({ user: res.locals.user.id });
+
+    res.render('recipe', { title: 'Recipes', recipes });
   } catch (error) {
-    res.status(500).send({ message: error.message || 'Error occurred' });
+    console.error('Error fetching recipes:', error);
+    res.status(500).send({ message: error.message || 'Error Occurred' });
   }
 };
 
-
-
-exports.exploreCategories = async(req, res) => {
+const viewEditRecipePage = async (req, res) => {
   try {
-    const limitNumber = 20;
-    const categories = await Category.find({}).limit(limitNumber);
-    res.render('categories', { title: 'Cooking Blog - Categoreis', categories } );
-    res.render('categories', { title: 'Cooking Blog - Categories', categories } );
-  } catch (error) {
-    res.satus(500).send({message: error.message || "Error Occured" });
-    res.status(500).send({message: error.message || "Error Occured" });
-  }
-} 
-
-
-
-exports.exploreCategoriesById = async(req, res) => { 
-  try {
-    let categoryId = req.params.id;
-    const limitNumber = 20;
-    const categoryById = await Recipe.find({ 'category': categoryId }).limit(limitNumber);
-    res.render('categories', { title: 'Recipe Book - Categoreis', categoryById } );
-  } catch (error) {
-    res.satus(500).send({message: error.message || "Error Occured" });
-  }
-} 
- 
-
-exports.exploreRecipe = async(req, res) => {
-  try {
-    let recipeId = req.params.id;
-    const recipe = await Recipe.findById(recipeId);
-    res.render('recipe', { title: 'Re - Recipe', recipe } );
-  } catch (error) {
-    res.satus(500).send({message: error.message || "Error Occured" });
-  }
-} 
-
-
-exports.searchRecipe = async(req, res) => {
-  try {
-    let searchTerm = req.body.searchTerm;
-    let recipe = await Recipe.find( { $text: { $search: searchTerm, $diacriticSensitive: true } });
-    res.render('search', { title: 'Recipe Book - Search', recipe } );
-  } catch (error) {
-    res.satus(500).send({message: error.message || "Error Occured" });
-  }
-  
-}
-
-
-exports.exploreLatest = async(req, res) => {
-  try {
-    const limitNumber = 20;
-    const recipe = await Recipe.find({}).sort({ _id: -1 }).limit(limitNumber);
-    res.render('explore-latest', { title: 'Recipe Book - Explore Latest', recipe } );
-  } catch (error) {
-    res.satus(500).send({message: error.message || "Error Occured" });
-  }
-} 
-
-
-exports.exploreRandom = async (req, res) => {
-  try {
-    const count = await Recipe.countDocuments();
-    const random = Math.floor(Math.random() * count);
-    const recipe = await Recipe.findOne().skip(random);
+    const recipe = await Recipe.findById(req.params.id);
 
     if (!recipe) {
-      return res.status(404).render('not-found'); // Handle no recipe found
+      req.flash('error', 'Recipe not found.');
+      return res.redirect('/recipe');
     }
 
-    res.render('explore-random', { recipe });
+    res.render('edit-recipe', { title: 'Edit Recipe', recipe });
   } catch (error) {
-    console.log(error);
-    res.status(500).send('Server Error');
+    console.error('Error fetching recipe for editing:', error);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/recipe');
   }
 };
 
-
-
-
-exports.submitRecipe = async(req, res) => {
-  const infoErrorsObj = req.flash('infoErrors');
-  const infoSubmitObj = req.flash('infoSubmit');
-  res.render('submit-recipe', { title: 'Recipe Book - Submit Recipe', infoErrorsObj, infoSubmitObj  } );
-}
-
-
-exports.submitRecipeOnPost = async(req, res) => {
+const viewFavoriteRecipePage = async (req, res) => {
   try {
+    // Fetch recipes liked by the logged-in user
+    const likedRecipes = await Recipe.find({ likes: req.session.user.id });
 
-    let imageUploadFile;
-    let uploadPath;
-    let newImageName;
+    res.render('liked-recipes', {
+      title: 'Liked Recipes',
+      recipes: likedRecipes,
+      user: res.locals.user,
+    });
+  } catch (error) {
+    console.error('Error fetching liked recipes:', error);
+    req.flash('error', 'Unable to load liked recipes.');
+    res.redirect('/');
+  }
+};
 
-    if(!req.files || Object.keys(req.files).length === 0){
-      console.log('No Files where uploaded.');
-    } else {
+const viewAllRecipePage = async (req, res) => {
+  try {
+    const recipes = await Recipe.find({}); // Fetch all recipes from the database
+    const user = res.locals.user || null; // Check if user is logged in
+    const categories = await Recipe.distinct('category');
 
-      imageUploadFile = req.files.image;
-      newImageName = Date.now() + imageUploadFile.name;
+    const recipesByCategory = {};
+    categories.forEach((category) => {
+      recipesByCategory[category] = recipes.filter((recipe) => recipe.category === category);
+    });
 
-      uploadPath = require('path').resolve('./') + '/public/uploads/' + newImageName;
+    res.render('all-recipes', { title: 'All Recipes', categories, recipesByCategory, user });
+  } catch (error) {
+    console.error('Error fetching all recipes:', error);
+    req.flash('error', 'Unable to load recipes.');
+    res.redirect('/');
+  }
+};
 
-      imageUploadFile.mv(uploadPath, function(err){
-        if(err) return res.satus(500).send(err);
-      })
+const createRecipe = async (req, res) => {
+  try {
+    const { name, description, ingredients, category } = req.body;
 
+    if (!req.file) {
+      req.flash('error', 'Image is required.');
+      return res.redirect('/recipe');
     }
 
-    const newRecipe = new Recipe({
-      name: req.body.name,
-      description: req.body.description,
-      email: req.body.email,
-      ingredients: req.body.ingredients,
-      category: req.body.category,
-      image: newImageName
+    // Ensure the user is logged in
+    if (!res.locals.user) {
+      req.flash('error', 'You must be logged in to create a recipe.');
+      return res.redirect('/login');
+    }
+
+    // Retrieve file information from Multer
+    const image = req.file;
+
+    // Construct the path for saving the file
+    const uploadPath = path.join(__dirname, '../../public/uploads', image.filename);
+
+    // Rename the file (if needed) or move it to a different location
+    const finalPath = path.join(__dirname, '../../public/uploads', `${Date.now()}-${image.originalname}`);
+    fs.renameSync(uploadPath, finalPath);
+
+    // Save recipe information to the database
+    const recipe = new Recipe({
+      name,
+      description,
+      ingredients: ingredients.split(','),
+      category,
+      image: `/uploads/${path.basename(finalPath)}`, // Path to serve the image
+      user: res.locals.user.id, // Associate the recipe with the logged-in user
     });
-    
-    await newRecipe.save();
 
-    req.flash('infoSubmit', 'Recipe has been added.')
-    res.redirect('/submit-recipe');
+    await recipe.save();
+    req.flash('success', 'Recipe created successfully.');
+    res.redirect('/recipe');
   } catch (error) {
-    // res.json(error);
-    req.flash('infoErrors', error);
-    res.redirect('/submit-recipe');
+    console.error('Error creating recipe:', error);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/recipe');
   }
-}
+};
 
-
-
-async function deleteRecipe() {
+const deleteRecipe = async (req, res) => {
   try {
-    await Recipe.deleteOne({ name: 'New Recipe From Form' });
+    const recipe = await Recipe.findById(req.params.id);
+
+    // Delete associated image
+    if (recipe.image) {
+      const imagePath = `public${recipe.image}`;
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    }
+
+    await Recipe.findByIdAndDelete(req.params.id);
+    req.flash('success', 'Recipe deleted successfully.');
+    res.redirect('/recipe');
   } catch (error) {
-    console.log(error);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/recipe');
   }
-}
-deleteRecipe();
+};
 
-
-
-async function updateRecipe() {
+const updateRecipe = async (req, res) => {
   try {
-    const res = await Recipe.updateOne({ name: 'New Recipe' }, { name: 'New Recipe Updated' });
-    console.log('Documents matched:', res.n);
-    console.log('Documents modified:', res.nModified);
-  } catch (error) {
-    console.log(error);
-  }
-}
-updateRecipe();
+    const { name, description, ingredients, category } = req.body;
 
+    // Fetch the recipe to update
+    const recipe = await Recipe.findById(req.params.id);
 
+    if (!recipe) {
+      req.flash('error', 'Recipe not found.');
+      return res.redirect('/recipe');
+    }
 
-// Dummy Data Example
+    // Update the fields
+    recipe.name = name || recipe.name;
+    recipe.description = description || recipe.description;
+    recipe.ingredients = ingredients ? ingredients.split(',') : recipe.ingredients;
+    recipe.category = category || recipe.category;
 
-async function insertDummyCategoryData() {
-  try {
-    await Category.insertMany([
-      {
-        "name": "Thai",
-        "image": "thai-food.jpg"
-      },
-      {
-        "name": "American",
-        "image": "american-food.jpg"
-      },
-      {
-        "name": "Chinese",
-        "image": "chinese-food.jpg"
-      },
-      {
-        "name": "Mexican",
-        "image": "mexican-food.jpg"
-      },
-      {
-        "name": "Indian",
-        "image": "indian-food.jpg"
-      },
-      {
-        "name": "Spanish",
-        "image": "spanish-food.jpg"
+    // Update the image if provided
+    if (req.file) {
+      const image = req.file;
+      const uploadPath = path.join(__dirname, '../../public/uploads', image.filename);
+      const finalPath = path.join(__dirname, '../../public/uploads', `${Date.now()}-${image.originalname}`);
+      fs.renameSync(uploadPath, finalPath);
+
+      // Delete old image
+      if (recipe.image) {
+        const oldImagePath = `public${recipe.image}`;
+        if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
       }
-    ]);
+
+      recipe.image = `/uploads/${path.basename(finalPath)}`;
+    }
+
+    await recipe.save();
+    req.flash('success', 'Recipe updated successfully.');
+    res.redirect('/recipe');
   } catch (error) {
-    console.log('err', + error);
+    console.error('Error updating recipe:', error);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/recipe');
   }
-}
+};
 
-
-async function insertDummyRecipeData() {
+const likeRecipe = async (req, res) => {
   try {
-    await Recipe.insertMany([
-      {
-        name: "Chinese Steak Tofu Stew",
-        description: `A flavorful stew made with tender steak, tofu, and Chinese spices.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "200g steak slices",
-          "150g tofu cubes",
-          "2 tbsp soy sauce",
-          "1 tbsp sesame oil"
-        ],
-        category: "Chinese",
-        image: "chinese-steak-tofu-stew.jpg"
-      },
-      {
-        name: "Chocolate Banoffee Whoopie Pies",
-        description: `A delightful mix of chocolate and banana in soft, fluffy pies.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "2 bananas",
-          "100g dark chocolate",
-          "200g whipped cream",
-          "200g sugar"
-        ],
-        category: "Dessert",
-        image: "chocolate-banoffe-whoopie-pies.jpg"
-      },
-      {
-        name: "Crab Cakes",
-        description: `Golden, crispy crab cakes perfect as appetizers or a main course.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "200g crab meat",
-          "50g breadcrumbs",
-          "1 egg",
-          "1 tsp Dijon mustard"
-        ],
-        category: "Seafood",
-        image: "crab-cakes.jpg"
-      },
-      {
-        name: "Grilled Lobster Rolls",
-        description: `A classic seafood dish with butter-grilled lobster in a soft roll.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "200g lobster meat",
-          "4 hot dog rolls",
-          "2 tbsp butter",
-          "1 tbsp mayonnaise"
-        ],
-        category: "Seafood",
-        image: "grilled-lobster-rolls.jpg"
-      },
-      {
-        name: "Key Lime Pie",
-        description: `A tangy and sweet pie with fresh lime and a graham cracker crust.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "3 limes (juiced)",
-          "200g graham crackers",
-          "1 can condensed milk",
-          "100ml whipping cream"
-        ],
-        category: "Dessert",
-        image: "key-lime-pie.jpg"
-      },
-      {
-        name: "Southern Fried Chicken",
-        description: `Crispy, juicy fried chicken seasoned with a Southern-style blend.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 kg chicken pieces",
-          "2 cups flour",
-          "1 tsp cayenne pepper",
-          "1 tsp paprika"
-        ],
-        category: "American",
-        image: "southern-friend-chicken.jpg"
-      },
-      {
-        name: "Spring Rolls",
-        description: `Crispy rolls filled with fresh vegetables and served with dipping sauce.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "100g carrots (julienned)",
-          "100g cabbage (shredded)",
-          "Spring roll wrappers",
-          "Sweet chili sauce"
-        ],
-        category: "Asian",
-        image: "spring-rolls.jpg"
-      },
-      {
-        name: "Stir-Fried Vegetables",
-        description: `A healthy mix of stir-fried seasonal vegetables with soy sauce.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "200g mixed vegetables",
-          "2 tbsp soy sauce",
-          "1 tbsp sesame oil",
-          "1 tsp garlic (minced)"
-        ],
-        category: "Vegan",
-        image: "stir-fried-vegetables.jpg"
-      },
-      {
-        name: "Thai Chinese Inspired Salad",
-        description: `A fresh and tangy salad with a hint of Thai flavors.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "100g lettuce",
-          "50g cherry tomatoes",
-          "1 tbsp fish sauce",
-          "1 tbsp lime juice"
-        ],
-        category: "Salad",
-        image: "thai-chinese-inspired-pinch-salad.jpg"
-      },
-      {
-        name: "Thai Green Curry",
-        description: `A classic Thai dish made with green curry paste and coconut milk.`,
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "200g chicken",
-          "100ml coconut milk",
-          "2 tbsp green curry paste",
-          "1 tbsp fish sauce"
-        ],
-        category: "Thai",
-        image: "thai-green-curry.jpg"
-      },
-      {
-        name: "Steak with Red Wine Sauce",
-        description: "A juicy steak served with a flavorful red wine reduction.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 steak",
-          "1 cup red wine",
-          "Salt and pepper to taste",
-          "1 tbsp butter",
-        ],
-        category: "American",
-        image: "chinese-steak-tofu-stew.jpg",
-      },
-      {
-        name: "Key Lime Pie",
-        description: "A tangy and creamy key lime pie with a graham cracker crust.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 graham cracker crust",
-          "3/4 cup key lime juice",
-          "1 can sweetened condensed milk",
-          "Whipped cream for topping",
-        ],
-        category: "American",
-        image: "key-lime-pie.jpg",
-      },
-      {
-        name: "Crab Cakes",
-        description: "Delicious crab cakes served with a tangy remoulade sauce.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 lb crab meat",
-          "1/2 cup breadcrumbs",
-          "1 egg",
-          "1/4 cup mayo",
-        ],
-        category: "American",
-        image: "crab-cakes.jpg",
-      },
-      {
-        name: "Thai Green Curry",
-        description: "A spicy and aromatic green curry with vegetables and chicken.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "2 tbsp green curry paste",
-          "1 can coconut milk",
-          "1 cup chicken breast",
-          "Mixed vegetables",
-        ],
-        category: "Thai",
-        image: "thai-green-curry.jpg",
-      },
-      {
-        name: "Tom Daley Soup",
-        description: "A warming Thai-inspired vegetable broth.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 cup vegetable stock",
-          "Mixed Thai herbs",
-          "Chili for spice",
-        ],
-        category: "Thai",
-        image: "thai-inspired-vegetable-broth.jpg",
-      },
-      {
-        name: "General Tso's Chicken",
-        description: "Crispy chicken in a tangy General Tso's sauce.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 lb chicken",
-          "1/2 cup soy sauce",
-          "1/4 cup sugar",
-          "Cornstarch for frying",
-        ],
-        category: "Chinese",
-        image: "general-tso-chicken.jpeg",
-      },
-      {
-        name: "Thai-Style Mussels",
-        description: "Fresh mussels cooked in a Thai-inspired coconut broth.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 lb mussels",
-          "1 can coconut milk",
-          "Thai basil",
-          "Lemongrass",
-        ],
-        category: "Thai",
-        image: "thai-style-mussels.jpg",
-      },
-      {
-        name: "Veggie Pad Thai",
-        description: "A classic Thai dish with stir-fried noodles and fresh vegetables.",
-        email: "recipeemail@raddy.co.uk",
-        ingredients: [
-          "1 lb rice noodles",
-          "1/2 cup peanut sauce",
-          "Mixed vegetables",
-          "2 eggs",
-        ],
-        category: "Thai",
-        image: "veggie-pad-thai.jpg",
-      },
-    ]);
-  console.log("Dummy recipes added successfully!");
-  } catch (error) {
-    console.log("Error inserting dummy recipes:", error);
-  }
-}
-insertDummyRecipeData();
+    const recipe = await Recipe.findById(req.params.id);
 
+    if (!recipe) {
+      req.flash('error', 'Recipe not found.');
+      return res.redirect('/recipes');
+    }
+
+    // Toggle like/unlike
+    if (!recipe.likes.includes(req.session.user.id)) {
+      recipe.likes.push(req.session.user.id);
+    } else {
+      recipe.likes = recipe.likes.filter((id) => id !== req.session.user.id);
+    }
+
+    await recipe.save();
+
+    // Redirect to the recipes page with the active tab
+    const redirectTab = req.query.tab ? `?tab=${req.query.tab}` : '';
+    res.redirect(`/recipes${redirectTab}`);
+  } catch (error) {
+    console.error('Error liking/unliking recipe:', error);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/recipes');
+  }
+};
+
+
+module.exports = { 
+  viewListRecipePage, viewEditRecipePage, viewFavoriteRecipePage,
+  viewAllRecipePage, likeRecipe, createRecipe, deleteRecipe, updateRecipe,
+};
